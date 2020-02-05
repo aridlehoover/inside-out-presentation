@@ -1,2 +1,3 @@
-# inside-out-presentation
-An application centric approach to software development...
+# Inside Out
+## An Application Centric Approach to Software Development
+

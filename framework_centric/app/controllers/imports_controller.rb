@@ -2,6 +2,8 @@ require_relative '../../../lib/base_controller'
 require_relative '../../../lib/rss'
 require_relative '../../../lib/twitter'
 require_relative '../../../lib/alert'
+require_relative '../../../lib/subscriber'
+require_relative '../../../lib/sms'
 
 class ImportsController < BaseController
   def create
@@ -18,7 +20,7 @@ class ImportsController < BaseController
       return render :new, notice: 'Unable to import alerts.'
     end
 
-    feed_items.each do |item|
+    alerts = feed_items.map do |item|
       case params[:url]
       when 'nws.xml'
         Alert.create(
@@ -51,6 +53,21 @@ class ImportsController < BaseController
           effective_at: item.date_time,
           expires_at: (Time.parse(item.date_time) + 3600).to_s
         )
+      end
+    end
+
+    active_alerts = alerts.select(&:active?)
+
+    if active_alerts.any?
+      Subscriber.all.each do |subscriber|
+        if subscriber.channel == 'SMS'
+          client = SMS.new(ENV['ACCOUNT_SID'], ENV['AUTH_TOKEN'])
+          client.text(
+            from: '+14152345678',
+            to: subscriber.address,
+            body: "There are #{active_alerts.count} new active alerts."
+          )
+        end
       end
     end
 

@@ -3,6 +3,7 @@ require_relative '../../domain/services/import_alerts_service'
 require_relative '../../domain/repositories/alert_repository'
 require_relative '../readers/reader_factory'
 require_relative '../adapters/import_alerts_response_adapter'
+require_relative '../adapters/notification_adapter'
 
 class ImportsController < BaseController
   def create
@@ -21,6 +22,7 @@ class ImportsController < BaseController
 
   def observers
     [
+      NotificationAdapter.new,
       ImportAlertsResponseAdapter.new(self)
     ]
   end

@@ -79,9 +79,11 @@ describe ImportsController do
             cap_expires: 'cap_expires2'
           )
         end
+        let(:alert1) { instance_double(Alert, active?: false) }
+        let(:alert2) { instance_double(Alert, active?: false) }
 
         before do
-          allow(Alert).to receive(:create)
+          allow(Alert).to receive(:create).and_return(alert1, alert2)
           allow(controller).to receive(:redirect_to)
 
           create
@@ -166,9 +168,10 @@ describe ImportsController do
             last_update: 'last_update2',
           )
         end
+        let(:alert) { instance_double(Alert, active?: false) }
 
         before do
-          allow(Alert).to receive(:create)
+          allow(Alert).to receive(:create).and_return(alert)
           allow(controller).to receive(:redirect_to)
 
           create
@@ -249,9 +252,10 @@ describe ImportsController do
             date_time: '2020-02-02 00:00:00 -0800'
           )
         end
+        let(:alert) { instance_double(Alert, active?: false) }
 
         before do
-          allow(Alert).to receive(:create)
+          allow(Alert).to receive(:create).and_return(alert)
           allow(controller).to receive(:redirect_to)
 
           create
@@ -285,6 +289,69 @@ describe ImportsController do
         it 'redirects to the alerts page with a message' do
           expect(controller).to have_received(:redirect_to)
             .with('/alerts', notice: a_kind_of(String))
+        end
+      end
+    end
+
+    context 'when there are active alerts' do
+      let(:url) { 'nws.xml' }
+      let(:feed_items) { [feed_item1, feed_item2] }
+      let(:feed_item1) do
+        instance_double(
+          'feed_item',
+          id: 'id1',
+          title: 'title1',
+          summary: 'summary1',
+          published: 'published1',
+          updated: 'updated1',
+          cap_effective: 'cap_effective1',
+          cap_expires: 'cap_expires1'
+        )
+      end
+      let(:feed_item2) do
+        instance_double(
+          'feed_item',
+          id: 'id2',
+          title: 'title2',
+          summary: 'summary2',
+          published: 'published2',
+          updated: 'updated2',
+          cap_effective: 'cap_effective2',
+          cap_expires: 'cap_expires2'
+        )
+      end
+      let(:alert1) { instance_double(Alert, active?: true) }
+      let(:alert2) { instance_double(Alert, active?: false) }
+      let(:subscribers) { [] }
+      let(:sms) { instance_double(SMS, text: true) }
+
+      before do
+        allow(RSS).to receive(:read).and_return(feed_items)
+        allow(Alert).to receive(:create).and_return(alert1, alert2)
+        allow(Subscriber).to receive(:all).and_return(subscribers)
+        allow(SMS).to receive(:new).and_return(sms)
+
+        create
+      end
+
+      context 'and there are NO subscribers' do
+        let(:subscribers) { [] }
+
+        it 'does not notify anyone' do
+          expect(sms).not_to have_received(:text)
+        end
+      end
+
+      context 'and there are subscribers' do
+        let(:subscribers) { [subscriber1, subscriber2] }
+        let(:subscriber1) { instance_double(Subscriber, channel: 'SMS', address: '123') }
+        let(:subscriber2) { instance_double(Subscriber, channel: 'unknown', address: 'qwe') }
+
+        it 'notifies each subsriber of the active alerts' do
+          expect(sms).to have_received(:text)
+            .with(from: '+14152345678', to: '123', body: 'There are 1 new active alerts.')
+          expect(sms).not_to have_received(:text)
+            .with(from: '+14152345678', to: 'qwe', body: 'There are 1 new active alerts.')
         end
       end
     end

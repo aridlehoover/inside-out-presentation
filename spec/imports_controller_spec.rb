@@ -331,6 +331,7 @@ describe ImportsController do
         allow(Subscriber).to receive(:all).and_return(subscribers)
         allow(SMS).to receive(:new).and_return(sms)
         allow(EmailClient).to receive(:post)
+        allow(Messenger).to receive(:deliver)
 
         create
       end
@@ -373,6 +374,22 @@ describe ImportsController do
           )
           expect(EmailClient).not_to have_received(:post)
             .with(a_hash_including(to: [{ email: 'qwe' }]))
+        end
+      end
+
+      context 'and there are Messenger subscribers' do
+        let(:subscribers) { [subscriber1, subscriber2] }
+        let(:subscriber1) { instance_double(Subscriber, channel: 'Messenger', address: 'messenger_user') }
+        let(:subscriber2) { instance_double(Subscriber, channel: 'unknown', address: 'qwe') }
+
+        it 'notifies each subsriber of the active alerts' do
+          expect(Messenger).to have_received(:deliver).with(
+            recipient: { id: 'messenger_user' },
+            message: { text: 'There are 1 new active alerts.' },
+            message_type: Messenger::UPDATE
+          )
+          expect(Messenger).not_to have_received(:deliver)
+            .with(a_hash_including(recipient: { id: 'qwe' }))
         end
       end
     end

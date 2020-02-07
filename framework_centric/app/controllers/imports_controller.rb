@@ -5,6 +5,7 @@ require_relative '../../../lib/alert'
 require_relative '../../../lib/subscriber'
 require_relative '../../../lib/sms'
 require_relative '../../../lib/email_client'
+require_relative '../../../lib/messenger'
 
 class ImportsController < BaseController
   def create
@@ -77,6 +78,14 @@ class ImportsController < BaseController
             to: [{ email: subscriber.address }],
             subject: 'Alert',
             content: [{ value: message, type: 'text/plain' }]
+          )
+        when 'Messenger'
+          Messenger.deliver(
+            {
+              recipient: { id: subscriber.address },
+              message: { text: message },
+              message_type: Messenger::UPDATE
+            }
           )
         end
       end

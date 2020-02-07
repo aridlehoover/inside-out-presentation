@@ -330,6 +330,7 @@ describe ImportsController do
         allow(Alert).to receive(:create).and_return(alert1, alert2)
         allow(Subscriber).to receive(:all).and_return(subscribers)
         allow(SMS).to receive(:new).and_return(sms)
+        allow(EmailClient).to receive(:post)
 
         create
       end
@@ -342,7 +343,7 @@ describe ImportsController do
         end
       end
 
-      context 'and there are subscribers' do
+      context 'and there are SMS subscribers' do
         let(:subscribers) { [subscriber1, subscriber2] }
         let(:subscriber1) { instance_double(Subscriber, channel: 'SMS', address: '123') }
         let(:subscriber2) { instance_double(Subscriber, channel: 'unknown', address: 'qwe') }
@@ -352,6 +353,26 @@ describe ImportsController do
             .with(from: '+14152345678', to: '123', body: 'There are 1 new active alerts.')
           expect(sms).not_to have_received(:text)
             .with(from: '+14152345678', to: 'qwe', body: 'There are 1 new active alerts.')
+        end
+      end
+
+      context 'and there are Email subscribers' do
+        let(:subscribers) { [subscriber1, subscriber2] }
+        let(:subscriber1) { instance_double(Subscriber, channel: 'Email', address: 'email@example.com') }
+        let(:subscriber2) { instance_double(Subscriber, channel: 'unknown', address: 'qwe') }
+
+        it 'notifies each subsriber of the active alerts' do
+          expect(EmailClient).to have_received(:post).with(
+            from: 'weather@alerts.com',
+            to: [{ email: 'email@example.com' }],
+            subject: 'Alert',
+            content: [{
+              value: 'There are 1 new active alerts.',
+              type: 'text/plain'
+            }]
+          )
+          expect(EmailClient).not_to have_received(:post)
+            .with(a_hash_including(to: [{ email: 'qwe' }]))
         end
       end
     end

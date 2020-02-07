@@ -4,6 +4,7 @@ require_relative '../../../lib/twitter'
 require_relative '../../../lib/alert'
 require_relative '../../../lib/subscriber'
 require_relative '../../../lib/sms'
+require_relative '../../../lib/email_client'
 
 class ImportsController < BaseController
   def create
@@ -59,13 +60,23 @@ class ImportsController < BaseController
     active_alerts = alerts.select(&:active?)
 
     if active_alerts.any?
+      message = "There are #{active_alerts.count} new active alerts."
+
       Subscriber.all.each do |subscriber|
-        if subscriber.channel == 'SMS'
+        case subscriber.channel
+        when 'SMS'
           client = SMS.new(ENV['ACCOUNT_SID'], ENV['AUTH_TOKEN'])
           client.text(
             from: '+14152345678',
             to: subscriber.address,
-            body: "There are #{active_alerts.count} new active alerts."
+            body: message
+          )
+        when 'Email'
+          EmailClient.post(
+            from: 'weather@alerts.com',
+            to: [{ email: subscriber.address }],
+            subject: 'Alert',
+            content: [{ value: message, type: 'text/plain' }]
           )
         end
       end

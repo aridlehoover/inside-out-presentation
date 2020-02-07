@@ -13,7 +13,7 @@ class SMSNotifier < Notifier
     client.text(
       from: '+14152345678',
       to: subscriber.address,
-      body: "There are #{alerts.count} new active alerts."
+      body: message
     )
   end
 

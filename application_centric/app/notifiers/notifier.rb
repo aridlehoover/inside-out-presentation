@@ -7,4 +7,10 @@ class Notifier
   end
 
   def notify; end
+
+  private
+
+  def message
+    "There are #{alerts.count} new active alerts."
+  end
 end

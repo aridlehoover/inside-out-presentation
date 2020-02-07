@@ -205,5 +205,88 @@ describe ImportsController do
         end
       end
     end
+
+    context 'when the url is the Tornado Weather Alerts Twitter feed' do
+      let(:url) { 'twitter.com/TornadoWeather' }
+      let(:feed_items) { [] }
+
+      before do
+        allow(Twitter).to receive(:get_tweets).and_return(feed_items)
+      end
+
+      it 'reads the feed' do
+        create
+
+        expect(Twitter).to have_received(:get_tweets).with(url)
+      end
+
+      context 'and there are NO items in the feed' do
+        let(:feed_items) { [] }
+
+        before { create }
+
+        it 'renders the new import page with a message' do
+          expect(controller).to have_received(:render)
+            .with(:new, notice: a_kind_of(String))
+        end
+      end
+
+      context 'and there are items in the feed' do
+        let(:feed_items) { [feed_item1, feed_item2] }
+        let(:feed_item1) do
+          instance_double(
+            'feed_item',
+            id: 'id1',
+            body: 'title1.description1',
+            date_time: '2020-01-01 00:00:00 -0800'
+          )
+        end
+        let(:feed_item2) do
+          instance_double(
+            'feed_item',
+            id: 'id2',
+            body: 'title2.description2',
+            date_time: '2020-02-02 00:00:00 -0800'
+          )
+        end
+
+        before do
+          allow(Alert).to receive(:create)
+          allow(controller).to receive(:redirect_to)
+
+          create
+        end
+
+        it 'creates an alert for each item in the feed' do
+          expect(Alert).to have_received(:create).with(
+            {
+              id: feed_item1.id,
+              title: 'title1',
+              description: 'description1',
+              published_at: feed_item1.date_time,
+              updated_at: feed_item1.date_time,
+              effective_at: feed_item1.date_time,
+              expires_at: '2020-01-01 01:00:00 -0800'
+            }
+          )
+          expect(Alert).to have_received(:create).with(
+            {
+              id: feed_item2.id,
+              title: 'title2',
+              description: 'description2',
+              published_at: feed_item2.date_time,
+              updated_at: feed_item2.date_time,
+              effective_at: feed_item2.date_time,
+              expires_at: '2020-02-02 01:00:00 -0800'
+            }
+          )
+        end
+
+        it 'redirects to the alerts page with a message' do
+          expect(controller).to have_received(:redirect_to)
+            .with('/alerts', notice: a_kind_of(String))
+        end
+      end
+    end
   end
 end

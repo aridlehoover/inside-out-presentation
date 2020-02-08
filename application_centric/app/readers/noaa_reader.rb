@@ -19,6 +19,5 @@ class NOAAReader < Reader
       effective_at: item.pub_date,
       expires_at: (Time.parse(item.pub_date) + SIX_HOURS).to_s
     }
-
   end
 end
